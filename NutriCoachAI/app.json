@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "scheme": "acme",
+    "plugins": [
+      "expo-router"
+    ],
+    "name": "NutriCoachAI",
+    "slug": "NutriCoachAI",
+    "newArchEnabled": true
+  }
+}
