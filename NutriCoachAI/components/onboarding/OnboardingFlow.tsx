@@ -4,22 +4,13 @@ import { View, Text, TouchableOpacity, TextInput, ScrollView, SafeAreaView } fro
 import { ArrowRight, ArrowLeft } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
+
 // utils/storage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { UserProfile } from '../../utils/storage';
+import { MacroCustomization } from './MacroCustomization';
 
-export interface UserProfile {
-  fitnessGoal: 'cutting' | 'bulking' | 'maintaining';
-  dietaryRestrictions: string[];
-  allergies: string[];
-  customRestrictions: string[];
-  activityLevel: string;
-  weight: string;
-  heightFeetOrMeters: string;
-  heightInchesOrCentimeters: string;
-  weightUnit: 'lb' | 'kg';
-  heightUnit: 'ft/in' | 'm/cm';
-  completedOnboarding?: boolean;
-}
+
 
 export const StorageKeys = {
   USER_PROFILE: 'user-profile',
@@ -107,6 +98,9 @@ export function OnboardingFlow({ onComplete }: OnboardingProps) {
       heightInchesOrCentimeters: '',
       weightUnit: 'lb',
       heightUnit: 'ft/in',
+      macroCalculation: 'automatic',
+      customMacros: undefined
+
     });
   const [customInput, setCustomInput] = useState('');
 
@@ -123,7 +117,7 @@ export function OnboardingFlow({ onComplete }: OnboardingProps) {
 
   const handleNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (step === 4) {  // Changed from 5 to 4 since we removed budget step
+    if (step === 5) {  
       onComplete(profile);
       return;
     }
@@ -137,7 +131,7 @@ export function OnboardingFlow({ onComplete }: OnboardingProps) {
 
   const renderProgressBar = () => (
     <View className="flex-row w-full px-6 mt-2">
-      {[1, 2, 3, 4].map((idx) => (  // Changed from 5 to 4 steps
+      {[1, 2, 3, 4, 5].map((idx) => (
         <View
           key={idx}
           className={`flex-1 h-1 mx-1 rounded-full ${
@@ -483,6 +477,13 @@ export function OnboardingFlow({ onComplete }: OnboardingProps) {
             ))}
           </View>
         );
+      case 5:
+        return (
+            <MacroCustomization
+              profile={profile}
+              onUpdate={(updates) => setProfile(prev => ({ ...prev, ...updates }))}
+            />
+          );
       default: return null;
 
     //   case 5:
@@ -534,7 +535,7 @@ export function OnboardingFlow({ onComplete }: OnboardingProps) {
           className="flex-row items-center bg-green-500 px-6 py-3 rounded-full"
         >
           <Text className="text-white font-medium mr-2">
-            {step === 4 ? 'Complete' : 'Continue'}
+            {step === 5 ? 'Complete' : 'Continue'}
           </Text>
           <ArrowRight size={20} color="white" />
         </TouchableOpacity>

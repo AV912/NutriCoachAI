@@ -1,5 +1,5 @@
 // app/(tabs)/coach.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback} from 'react';
 import { 
   View, 
   Text, 
@@ -14,8 +14,10 @@ import { Send, Check } from 'lucide-react-native';
 import { getUserProfile, UserProfile } from '../../utils/storage';
 import { generateMealSuggestion } from '../../utils/gptService';
 import { trackMeal } from '../../utils/mealTracking';
+import { useMealStore } from '../../utils/mealTracking';
 import * as Haptics from 'expo-haptics';
 import { MealSuggestionCard } from '../../components/MealSuggestionCard';
+import { router, useFocusEffect } from 'expo-router';
 
 
 interface Message {
@@ -25,63 +27,97 @@ interface Message {
   suggestion?: MealSuggestion;
 }
 
+export interface RecipeDetails {
+    ingredients: string[];
+    instructions: string[];
+    prepTime: number;
+    cookTime: number;
+  }
+
 interface MealSuggestion {
-  name: string;
-  description: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  isHomemade: boolean;
+    name: string;
+    description: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    isHomemade: boolean;
+    recipe?: RecipeDetails;
+    restaurant?: string;
 }
 
 export default function CoachScreen() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  async function loadProfile() {
-    const userProfile = await getUserProfile();
-    setProfile(userProfile);
-    if (userProfile) {
-      setMessages([
-        {
-          id: '1',
-          type: 'assistant',
-          content: `Hey there! I'm your NutriCoach AI. I know your goals include ${userProfile.fitnessGoal}, and I'll keep in mind your dietary preferences and restrictions. What kind of meal are you looking for?`
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [inputText, setInputText] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [lastProfileHash, setLastProfileHash] = useState<string>('');
+    const scrollViewRef = useRef<ScrollView>(null);
+  
+    useFocusEffect(
+        useCallback(() => {
+          // Load profile when the screen is focused
+          loadProfile();
+      
+          return () => {
+            // Optional cleanup logic here
+          };
+        }, [])
+      );
+  
+    useEffect(() => {
+      if (profile) {
+        // Create a hash of the entire profile to detect any changes
+        const currentHash = JSON.stringify(profile);
+        
+        // If this is first load or if profile has changed
+        if (!lastProfileHash || lastProfileHash !== currentHash) {
+          setLastProfileHash(currentHash);
+          
+          // Reset chat with new greeting
+          setMessages([
+            {
+              id: Date.now().toString(),
+              type: 'assistant',
+              content: `Hey there! I'm your NutriCoach AI. I know your goals include ${profile.fitnessGoal}, and I'll keep in mind your dietary preferences and restrictions. What kind of meal are you looking for?`
+            }
+          ]);
         }
-      ]);
+      }
+    }, [profile]);
+  
+    async function loadProfile() {
+      const userProfile = await getUserProfile();
+      setProfile(userProfile);
     }
-  }
 
   const handleTrackMeal = async (suggestion: MealSuggestion, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     try {
-      await trackMeal({
+      await useMealStore.getState().trackMeal({
         name: suggestion.name,
         description: suggestion.description,
         calories: suggestion.calories,
         protein: suggestion.protein,
         carbs: suggestion.carbs,
         fat: suggestion.fat,
-        mealType
+        mealType,
+        isHomemade: suggestion.isHomemade,
+        recipe: suggestion.recipe
       });
-
+  
+      // Provide haptic feedback
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
+  
+      // Add confirmation message
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         type: 'assistant',
-        content: `Great! I've tracked ${suggestion.name} as your ${mealType}. Would you like another suggestion?`
+        content: `✅ Tracked ${suggestion.name} as ${mealType}! Would you like another suggestion?`
       }]);
-
+  
     } catch (error) {
       console.error('Error tracking meal:', error);
+      // Add error message
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         type: 'assistant',

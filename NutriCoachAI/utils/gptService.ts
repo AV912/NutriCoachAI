@@ -1,6 +1,7 @@
 // utils/gptService.ts
 import { UserProfile } from './storage';
 import { calculateDailyNeeds } from './nutritionCalculator';
+import { useMealStore } from './mealTracking';
 import Constants from 'expo-constants';
 
 export interface RecipeDetails {
@@ -22,6 +23,15 @@ export interface MealSuggestion {
   restaurant?: string;
 }
 
+// Helper function to get time-appropriate meal suggestions
+function getMealTypeBasedOnTime(): 'breakfast' | 'lunch' | 'dinner' | 'snack' {
+  const hour = new Date().getHours();
+  if (hour < 10) return 'breakfast';
+  if (hour < 15) return 'lunch';
+  if (hour < 20) return 'dinner';
+  return 'snack';
+}
+
 export async function generateMealSuggestion(
   userMessage: string,
   profile: UserProfile,
@@ -34,75 +44,82 @@ export async function generateMealSuggestion(
   }
 
   try {
-    const dailyNeeds = calculateDailyNeeds(profile);
+    const dailyTargets = calculateDailyNeeds(profile);
+    const todayLog = useMealStore.getState().todayLog;
+    const currentMealType = getMealTypeBasedOnTime();
     
-    const systemPrompt = `You are a nutrition coach helping create personalized meal suggestions. You MUST ALWAYS include a meal suggestion with every response, no matter what the user asks.
+    // Calculate remaining macros
+    const remaining = {
+      calories: Math.max(0, dailyTargets.calories - (todayLog?.totals.calories || 0)),
+      protein: Math.max(0, dailyTargets.protein - (todayLog?.totals.protein || 0)),
+      carbs: Math.max(0, dailyTargets.carbs - (todayLog?.totals.carbs || 0)),
+      fat: Math.max(0, dailyTargets.fat - (todayLog?.totals.fat || 0))
+    };
 
-User Profile:
+    // Get meal history for context
+    const mealHistory = todayLog?.meals.map(meal => ({
+      name: meal.name,
+      mealType: meal.mealType,
+      macros: {
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fat: meal.fat
+      }
+    })) || [];
+
+    const systemPrompt = `You are a nutrition coach helping create personalized meal suggestions.
+
+User Profile & Context:
 - Fitness Goal: ${profile.fitnessGoal}
 - Dietary Restrictions: ${profile.dietaryRestrictions.join(', ')}
 - Allergies: ${profile.allergies.join(', ')}
 - Custom Restrictions: ${profile.customRestrictions.join(', ')}
+- Current Time Suggests: ${currentMealType}
+- Already Eaten Today: ${mealHistory.length > 0 ? JSON.stringify(mealHistory) : 'No meals logged yet'}
 
-Daily Nutritional Targets:
-- Calories: ${dailyNeeds.calories}
-- Protein: ${dailyNeeds.protein}g
-- Carbs: ${dailyNeeds.carbs}g
-- Fat: ${dailyNeeds.fat}g
+Remaining Daily Targets:
+- Calories: ${remaining.calories} kcal
+- Protein: ${remaining.protein}g
+- Carbs: ${remaining.carbs}g
+- Fat: ${remaining.fat}g
 
-CRITICAL JSON FORMATTING RULES:
-1. ALL numerical values in JSON must be plain numbers without units (NO "g" or "minutes" in JSON values)
-2. Units should only appear in text descriptions and ingredient lists
-3. Every response must contain exactly one suggestion block
+SUPER IMPORTANT CRITICAL FORMATTING RULES:
+1. ALL numerical values in JSON must be plain numbers WITHOUT units
+2. Units should only appear in descriptions and ingredients
+3. Every response absolutely must contain exactly one suggestion
 
-For homemade meals, use this format:
+CORRECT FORMAT Example:
 <suggestion>
 {
-  "name": "Meal Name",
-  "description": "Description mentioning 30g protein, 40g carbs, etc.",
-  "calories": 450,
-  "protein": 30,
-  "carbs": 40,
-  "fat": 15,
+  "name": "Protein Smoothie",
+  "description": "Smoothie with 20g protein, 30g carbs, and 5g fat",
+  "calories": 250,
+  "protein": 20,
+  "carbs": 30,
+  "fat": 5,
   "isHomemade": true,
   "recipe": {
-    "ingredients": ["8 oz (225g) ingredient one", "2 tbsp ingredient two"],
-    "instructions": ["Step 1 details", "Step 2 details"],
-    "prepTime": 15,
-    "cookTime": 25
+    "ingredients": ["1 scoop (30g) protein powder", "1 banana", "1 cup milk"],
+    "instructions": ["Blend all ingredients", "Serve cold"],
+    "prepTime": 5,
+    "cookTime": 0
   }
 }
 </suggestion>
 
-For restaurant meals, use this format:
-<suggestion>
-{
-  "name": "Menu Item Name",
-  "description": "Description with 25g protein, 35g carbs, etc.",
-  "calories": 400,
-  "protein": 25,
-  "carbs": 35,
-  "fat": 12,
-  "isHomemade": false,
-  "restaurant": "Restaurant Name"
-}
-</suggestion>
+Your suggestions must:
+1. Fit within remaining macros where possible
+2. Respect all dietary restrictions and allergies
+3. Be appropriate for the time of day
+4. Include complete nutritional information
+5. Be specific with portions
 
-KEY REQUIREMENTS:
-1. ALWAYS include a suggestion with EVERY response
-2. Keep protein values aligned with user's fitness goals
-3. Respect all dietary restrictions and allergies
-4. Provide detailed recipe steps for homemade meals
-5. Include ordering customization tips for restaurant meals
-6. Maintain a friendly, conversational tone while being informative
-7. Make sure the calories and macros for the suggestion are extremely accurate
+${remaining.calories < 200 ? 
+  "WARNING: User has very few calories remaining. Suggest very light options." : ""}
 
-Remember to:
-- Update suggestions based on user feedback
-- Keep all numerical values in JSON as plain numbers
-- Include portion sizes in descriptions
-- Be specific with ingredients and measurements
-- Always validate suggestions against user's dietary restrictions`;
+${remaining.protein < 10 ? 
+  "NOTE: Protein target almost met. Focus on other macros." : ""}`;
 
     const messages = [
       {

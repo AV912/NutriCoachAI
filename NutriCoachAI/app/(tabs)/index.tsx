@@ -2,38 +2,60 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getUserProfile, UserProfile } from '../../utils/storage';
-import { getTodayLog, DailyLog, TrackedMeal } from '../../utils/mealTracking';
 import { calculateDailyNeeds } from '../../utils/nutritionCalculator';
-import { Plus, Utensils, TrendingUp, ChevronRight } from 'lucide-react-native';
+import { Plus, Utensils, TrendingUp } from 'lucide-react-native';
+import { useMealStore } from '../../utils/mealTracking';
+import { TrackedMeal } from '../../utils/mealTracking';
+import { MacroWarning } from '../../components/MacroWarning';
+import { MealCard } from '../../components/MealCard';
+import { MacroDisplay } from '../../components/MacroDisplay';
+
 
 export default function HomeScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const { todayLog, refreshTodayLog } = useMealStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [dailyLog, setDailyLog] = useState<DailyLog | null>(null);
   const [dailyTargets, setDailyTargets] = useState({
     calories: 0,
     protein: 0,
     carbs: 0,
     fat: 0
   });
+  const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
     loadData();
+    // Refresh data every 5 seconds
+    const interval = setInterval(refreshTodayLog, 5000);
+    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadData(); // Reload data when the screen comes into focus
+    });
+
+    return () => unsubscribe();
+  }, [navigation]);
 
   async function loadData() {
     try {
       const userProfile = await getUserProfile();
-      const todayLog = await getTodayLog();
+      await refreshTodayLog();
       
       if (userProfile) {
         setProfile(userProfile);
-        const targets = calculateDailyNeeds(userProfile);
-        setDailyTargets(targets);
+        // Check for custom macros
+        if (userProfile.macroCalculation === 'custom' && userProfile.customMacros) {
+          setDailyTargets(userProfile.customMacros);
+        } else {
+          const targets = calculateDailyNeeds(userProfile);
+          setDailyTargets(targets);
+        }
       }
-      
-      setDailyLog(todayLog);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -42,7 +64,7 @@ export default function HomeScreen() {
   const renderMealSection = (mealType: string, meals: TrackedMeal[]) => {
     const mealTypeFormatted = mealType.charAt(0).toUpperCase() + mealType.slice(1);
     const filteredMeals = meals.filter(meal => meal.mealType === mealType);
-
+  
     return (
       <View className="mb-6">
         <View className="flex-row justify-between items-center mb-2">
@@ -55,42 +77,10 @@ export default function HomeScreen() {
             <Text className="text-green-500 ml-1">Add</Text>
           </TouchableOpacity>
         </View>
-
+  
         {filteredMeals.length > 0 ? (
-          filteredMeals.map((meal, index) => (
-            <View 
-              key={meal.id} 
-              className="bg-white rounded-xl p-4 mb-2 border border-gray-100"
-            >
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1">
-                  <Text className="font-medium text-gray-900">{meal.name}</Text>
-                  <Text className="text-gray-600 text-sm mt-1">{meal.description}</Text>
-                </View>
-                {meal.isHomemade && (
-                  <Utensils size={16} className="text-gray-400" />
-                )}
-              </View>
-              
-              <View className="flex-row justify-between mt-3">
-                <View>
-                  <Text className="text-xs text-gray-500">Calories</Text>
-                  <Text className="font-medium">{meal.calories}</Text>
-                </View>
-                <View>
-                  <Text className="text-xs text-gray-500">Protein</Text>
-                  <Text className="font-medium">{meal.protein}g</Text>
-                </View>
-                <View>
-                  <Text className="text-xs text-gray-500">Carbs</Text>
-                  <Text className="font-medium">{meal.carbs}g</Text>
-                </View>
-                <View>
-                  <Text className="text-xs text-gray-500">Fat</Text>
-                  <Text className="font-medium">{meal.fat}g</Text>
-                </View>
-              </View>
-            </View>
+          filteredMeals.map((meal) => (
+            <MealCard key={meal.id} meal={meal} />
           ))
         ) : (
           <TouchableOpacity 
@@ -111,24 +101,48 @@ export default function HomeScreen() {
     return Math.min(percentage, 100);
   };
 
-  const renderProgressBar = (label: string, current: number, target: number, unit: string, color: string) => (
+  const getProgressBarColor = (current: number, target: number, type: string) => {
+    const percentage = (current / target) * 100;
+    if (percentage > 100) {
+      return type === 'calories' ? 'bg-red-500' : 'bg-orange-500';
+    }
+    switch (type) {
+      case 'calories':
+        return 'bg-green-500';
+      case 'protein':
+        return 'bg-blue-500';
+      case 'carbs':
+        return 'bg-purple-500';
+      case 'fat':
+        return 'bg-yellow-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const renderProgressBar = (label: string, current: number, target: number, unit: string, type: string) => (
     <View className="mb-4">
       <View className="flex-row justify-between mb-1">
         <Text className="text-sm text-gray-600">{label}</Text>
-        <Text className="text-sm text-gray-600">
+        <Text className={`text-sm ${current > target ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
           {current} / {target}{unit}
         </Text>
       </View>
       <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
         <View 
-          className={`h-full ${color}`}
+          className={`h-full ${getProgressBarColor(current, target, type)}`}
           style={{ width: `${calculateProgress(current, target)}%` }}
         />
       </View>
+      {current > target && (
+        <Text className="text-xs text-red-500 mt-1">
+          Exceeded by {Math.round(current - target)}{unit}
+        </Text>
+      )}
     </View>
   );
 
-  if (!profile || !dailyLog) {
+  if (!profile || !todayLog) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <Text>Loading...</Text>
@@ -136,7 +150,7 @@ export default function HomeScreen() {
     );
   }
 
-  const totals = dailyLog.totals;
+  const totals = todayLog.totals;
 
   return (
     <ScrollView className="flex-1 bg-white">
@@ -149,22 +163,35 @@ export default function HomeScreen() {
       </View>
 
       {/* Progress Overview */}
-      <View className="p-6">
-        <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-          {renderProgressBar('Calories', totals.calories, dailyTargets.calories, 'kcal', 'bg-green-500')}
-          {renderProgressBar('Protein', totals.protein, dailyTargets.protein, 'g', 'bg-blue-500')}
-          {renderProgressBar('Carbs', totals.carbs, dailyTargets.carbs, 'g', 'bg-purple-500')}
-          {renderProgressBar('Fat', totals.fat, dailyTargets.fat, 'g', 'bg-yellow-500')}
+        <View className="p-6">
+        <MacroDisplay
+            calories={dailyTargets.calories}
+            protein={dailyTargets.protein}
+            carbs={dailyTargets.carbs}
+            fat={dailyTargets.fat}
+            consumed={todayLog.totals}
+        />
         </View>
-      </View>
+
+      {/* Macro Warning */}
+      <MacroWarning 
+        remaining={{
+          calories: Math.max(0, dailyTargets.calories - totals.calories),
+          protein: Math.max(0, dailyTargets.protein - totals.protein),
+          carbs: Math.max(0, dailyTargets.carbs - totals.carbs),
+          fat: Math.max(0, dailyTargets.fat - totals.fat)
+        }}
+        onDismiss={() => setShowWarning(false)}
+      />
+
 
       {/* Meals */}
       <View className="px-6">
         <Text className="text-xl font-bold mb-4">Today's Meals</Text>
-        {renderMealSection('breakfast', dailyLog.meals)}
-        {renderMealSection('lunch', dailyLog.meals)}
-        {renderMealSection('dinner', dailyLog.meals)}
-        {renderMealSection('snack', dailyLog.meals)}
+        {renderMealSection('breakfast', todayLog.meals)}
+        {renderMealSection('lunch', todayLog.meals)}
+        {renderMealSection('dinner', todayLog.meals)}
+        {renderMealSection('snack', todayLog.meals)}
       </View>
     </ScrollView>
   );

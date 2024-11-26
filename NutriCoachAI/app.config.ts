@@ -7,6 +7,7 @@ const config: ExpoConfig = {
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
+  scheme: 'nutricoach',
   userInterfaceStyle: 'light',
   splash: {
     image: './assets/splash.png',
@@ -20,20 +21,30 @@ const config: ExpoConfig = {
     '**/*'
   ],
   ios: {
-    supportsTablet: true
+    supportsTablet: true,
+    bundleIdentifier: 'com.yourcompany.nutricoachai'
   },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#FFFFFF'
-    }
+    },
+    package: 'com.yourcompany.nutricoachai'
   },
   web: {
     favicon: './assets/favicon.png'
   },
+  plugins: [
+    'expo-router'
+  ],
+  experiments: {
+    tsconfigPaths: true
+  },
   extra: {
-    openAiApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY
-  }
+    openAiApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+  },
+  // Add new architecture support
+  newArchEnabled: true
 };
 
 export default config;

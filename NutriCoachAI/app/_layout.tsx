@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { getUserProfile } from '../utils/storage';
 import { View, Text } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function RootLayout() {
   const [isLoading, setIsLoading] = useState(true);
@@ -32,12 +33,32 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {!hasCompletedOnboarding ? (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      ) : (
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      )}
-    </Stack>
+        <Stack.Screen 
+          name="modals/edit-profile" 
+          options={{
+            presentation: 'modal',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="modals/view-recipe" 
+          options={{
+            presentation: 'modal',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+            name="modals/edit-macros" 
+            options={{
+            presentation: 'modal',
+            headerShown: false,
+            }}
+        />
+      </Stack>
+    </GestureHandlerRootView>
   );
 }
