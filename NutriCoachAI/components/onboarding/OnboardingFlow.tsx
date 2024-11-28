@@ -7,8 +7,9 @@ import * as Haptics from 'expo-haptics';
 
 // utils/storage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UserProfile } from '../../utils/storage';
+
 import { MacroCustomization } from './MacroCustomization';
+import { ActivityLevel, UserProfile } from '../../types/nutrition';
 
 
 
@@ -92,7 +93,7 @@ export function OnboardingFlow({ onComplete }: OnboardingProps) {
       dietaryRestrictions: [],
       allergies: [],
       customRestrictions: [],
-      activityLevel: '',
+      activityLevel: 'sedentary',
       weight: '',
       heightFeetOrMeters: '',
       heightInchesOrCentimeters: '',
@@ -463,7 +464,10 @@ export function OnboardingFlow({ onComplete }: OnboardingProps) {
                     ? 'border-green-500 bg-green-50'
                     : 'border-gray-200'
                 }`}
-                onPress={() => setProfile(prev => ({ ...prev, activityLevel: level.value }))}
+                onPress={() => setProfile(prev => ({ 
+                  ...prev, 
+                  activityLevel: level.value as ActivityLevel
+                }))}
               >
                 <Text className={`font-medium ${
                   profile.activityLevel === level.value ? 'text-green-500' : 'text-gray-900'

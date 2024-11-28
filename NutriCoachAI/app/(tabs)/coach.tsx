@@ -11,13 +11,15 @@ import {
   ActivityIndicator 
 } from 'react-native';
 import { Send, Check } from 'lucide-react-native';
-import { getUserProfile, UserProfile } from '../../utils/storage';
+import { getUserProfile } from '../../utils/storage';
+
 import { generateMealSuggestion } from '../../utils/gptService';
 import { trackMeal } from '../../utils/mealTracking';
 import { useMealStore } from '../../utils/mealTracking';
 import * as Haptics from 'expo-haptics';
 import { MealSuggestionCard } from '../../components/MealSuggestionCard';
 import { router, useFocusEffect } from 'expo-router';
+import { UserProfile } from '../../types/nutrition';
 
 
 interface Message {

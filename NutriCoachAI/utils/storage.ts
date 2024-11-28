@@ -1,29 +1,6 @@
 // utils/storage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-export interface MacroTargets {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  }
-
-
-export interface UserProfile {
-    fitnessGoal: 'cutting' | 'bulking' | 'maintaining';
-    dietaryRestrictions: string[];
-    allergies: string[];
-    customRestrictions: string[];
-    activityLevel: string;
-    weight: string;
-    heightFeetOrMeters: string;
-    heightInchesOrCentimeters: string;
-    weightUnit: 'lb' | 'kg';
-    heightUnit: 'ft/in' | 'm/cm';
-    completedOnboarding?: boolean;
-    macroCalculation: 'automatic' | 'custom';
-    customMacros?: MacroTargets;
-  }
+import { UserProfile, MacroTargets } from '../types/nutrition';
 
 export const StorageKeys = {
   USER_PROFILE: 'user-profile',

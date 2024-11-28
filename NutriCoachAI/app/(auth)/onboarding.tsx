@@ -3,8 +3,9 @@ import { Alert, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { OnboardingFlow } from '../../components/onboarding/OnboardingFlow';
 import { saveUserProfile } from '../../utils/storage';
-import type { UserProfile } from '../../utils/storage';
+
 import { useProfileStore } from '../../utils/profileStore';
+import { UserProfile } from '../../types/nutrition';
 
 export default function OnboardingScreen() {
   const router = useRouter();

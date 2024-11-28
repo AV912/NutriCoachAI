@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { calculateDailyNeeds } from '../../utils/nutritionCalculator';
 import * as Haptics from 'expo-haptics';
-import { UserProfile } from '../../utils/storage';
+import { UserProfile } from '../../types/nutrition';
+
 
 interface MacroTargets {
   protein: number;

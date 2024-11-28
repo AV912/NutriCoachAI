@@ -1,28 +1,19 @@
 // app/_layout.tsx
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
-import { getUserProfile } from '../utils/storage';
 import { View, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthProvider, useAuth } from '../contexts/auth';
+import { router } from 'expo-router';
 
-export default function RootLayout() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+function RootLayoutNav() {
+  const { isLoading, user } = useAuth();
 
   useEffect(() => {
-    checkOnboardingStatus();
-  }, []);
-
-  async function checkOnboardingStatus() {
-    try {
-      const profile = await getUserProfile();
-      setHasCompletedOnboarding(!!profile?.completedOnboarding);
-    } catch (error) {
-      console.error('Error checking onboarding status:', error);
-    } finally {
-      setIsLoading(false);
+    if (!isLoading && !user) {
+      router.replace('/(auth)/login');
     }
-  }
+  }, [isLoading, user]);
 
   if (isLoading) {
     return (
@@ -52,13 +43,21 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen 
-            name="modals/edit-macros" 
-            options={{
+          name="modals/edit-macros" 
+          options={{
             presentation: 'modal',
             headerShown: false,
-            }}
+          }}
         />
       </Stack>
     </GestureHandlerRootView>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
   );
 }

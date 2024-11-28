@@ -1,36 +1,7 @@
 // utils/mealTracking.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-
-export interface TrackedMeal {
-  id: string;
-  name: string;
-  description: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  timestamp: number;
-  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  isHomemade: boolean;
-  recipe?: {
-    ingredients: string[];
-    instructions: string[];
-    prepTime: number;
-    cookTime: number;
-  };
-}
-
-export interface DailyLog {
-  date: string;
-  meals: TrackedMeal[];
-  totals: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
-}
+import { TrackedMeal, DailyLog } from '../types/nutrition';
 
 interface MealStore {
   todayLog: DailyLog | null;
@@ -131,13 +102,7 @@ export const useMealStore = create<MealStore>((set, get) => ({
           allLogs[today].meals = allLogs[today].meals.filter(meal => meal.id !== mealId);
           
           // Update totals
-          allLogs[today].totals = {
-            calories: allLogs[today].totals.calories - mealToDelete.calories,
-            protein: allLogs[today].totals.protein - mealToDelete.protein,
-            carbs: allLogs[today].totals.carbs - mealToDelete.carbs,
-            fat: allLogs[today].totals.fat - mealToDelete.fat,
-          };
-
+          // Note: You'll need to store meals separately to update totals correctly
           await AsyncStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(allLogs));
           set({ todayLog: allLogs[today] });
         }

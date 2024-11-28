@@ -3,14 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { getUserProfile, UserProfile } from '../../utils/storage';
+import { getUserProfile} from '../../utils/storage';
 import { calculateDailyNeeds } from '../../utils/nutritionCalculator';
 import { Plus, Utensils, TrendingUp } from 'lucide-react-native';
 import { useMealStore } from '../../utils/mealTracking';
-import { TrackedMeal } from '../../utils/mealTracking';
+
 import { MacroWarning } from '../../components/MacroWarning';
 import { MealCard } from '../../components/MealCard';
 import { MacroDisplay } from '../../components/MacroDisplay';
+import { TrackedMeal, UserProfile } from '../../types/nutrition';
 
 
 export default function HomeScreen() {
@@ -188,10 +189,10 @@ export default function HomeScreen() {
       {/* Meals */}
       <View className="px-6">
         <Text className="text-xl font-bold mb-4">Today's Meals</Text>
-        {renderMealSection('breakfast', todayLog.meals)}
-        {renderMealSection('lunch', todayLog.meals)}
-        {renderMealSection('dinner', todayLog.meals)}
-        {renderMealSection('snack', todayLog.meals)}
+        {renderMealSection('breakfast', todayLog.meals as unknown as TrackedMeal[])}
+        {renderMealSection('lunch', todayLog.meals as unknown as TrackedMeal[])}
+        {renderMealSection('dinner', todayLog.meals as unknown as TrackedMeal[])}
+        {renderMealSection('snack', todayLog.meals as unknown as TrackedMeal[])}
       </View>
     </ScrollView>
   );

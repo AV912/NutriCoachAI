@@ -4,9 +4,10 @@ import { View, Text, TouchableOpacity, Alert, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Utensils, Trash2, ChevronRight } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { TrackedMeal } from '../utils/mealTracking';
+
 import { useMealStore } from '../utils/mealTracking';
 import * as Haptics from 'expo-haptics';
+import { TrackedMeal } from '../types/nutrition';
 
 interface MealCardProps {
   meal: TrackedMeal;

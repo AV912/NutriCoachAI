@@ -1,13 +1,13 @@
 // utils/profileStore.ts
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UserProfile } from './storage';
-
-const STORAGE_KEY = 'user-profile';
+import { auth } from '../services/firebase';
+import { firestoreService } from '../services/firestore';
+import type { UserProfile } from '../types/nutrition';
 
 interface ProfileState {
   profile: UserProfile | null;
   isLoading: boolean;
+  error: string | null;
   loadProfile: () => Promise<void>;
   updateProfile: (profile: UserProfile) => Promise<void>;
 }
@@ -15,28 +15,38 @@ interface ProfileState {
 export const useProfileStore = create<ProfileState>((set) => ({
   profile: null,
   isLoading: false,
+  error: null,
 
   loadProfile: async () => {
-    set({ isLoading: true });
+    const user = auth.currentUser;
+    if (!user) return;
+
+    set({ isLoading: true, error: null });
     try {
-      const storedProfile = await AsyncStorage.getItem(STORAGE_KEY);
-      if (storedProfile) {
-        set({ profile: JSON.parse(storedProfile) });
-      }
+      const profile = await firestoreService.getProfile(user.uid);
+      set({ profile });
     } catch (error) {
       console.error('Error loading profile:', error);
+      set({ error: 'Failed to load profile' });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  updateProfile: async (newProfile: UserProfile) => {
+  updateProfile: async (profile: UserProfile) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    set({ isLoading: true, error: null });
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newProfile));
-      set({ profile: newProfile });
+      await firestoreService.saveProfile(user.uid, profile);
+      set({ profile });
     } catch (error) {
       console.error('Error updating profile:', error);
+      set({ error: 'Failed to update profile' });
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 }));
